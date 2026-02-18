@@ -1,0 +1,31 @@
+# Build directories
+build/
+builddir/
+_build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled files
+*.so
+*.o
+*.a
+
+# Generated files
+*.c
+*.h
+*.vapi
+config.vala
+
+# Backup files
+*~
+*.bak
+
+# Temporary files
+tmp/
+temp/
+.claude/
