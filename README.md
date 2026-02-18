@@ -47,7 +47,7 @@ sudo meson install -C build
 ### Restart WingPanel
 
 ```bash
-killall wingpanel
+killall io.elementary.wingpanel
 ```
 
 The indicator should appear automatically in the top panel when DDC-compatible displays are detected.
