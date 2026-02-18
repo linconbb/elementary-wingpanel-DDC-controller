@@ -1,5 +1,5 @@
 #!/bin/bash
-# DDC Brightness WingPanel Indicator 安装脚本
+# DDC Brightness WingPanel Indicator Installation Script
 
 set -e
 
@@ -7,36 +7,36 @@ PLUGIN_NAME="libddcbrightness.so"
 PLUGIN_DIR="/usr/lib/x86_64-linux-gnu/wingpanel"
 SOURCE_DIR="$(dirname "$0")"
 
-echo "=== DDC Brightness WingPanel Indicator 安装 ==="
+echo "=== DDC Brightness WingPanel Indicator Installation ==="
 echo ""
 
-# 检查是否已编译
+# Check if compiled
 if [ ! -f "$SOURCE_DIR/build/src/$PLUGIN_NAME" ]; then
-    echo "错误：未找到编译好的插件文件"
-    echo "请先运行: meson setup build && meson compile -C build"
+    echo "Error: Compiled plugin file not found"
+    echo "Please run: meson setup build && meson compile -C build"
     exit 1
 fi
 
-# 检查依赖
-echo "[1/4] 检查依赖..."
+# Check dependencies
+echo "[1/4] Checking dependencies..."
 if ! command -v ddcutil &> /dev/null; then
-    echo "  正在安装 ddcutil..."
+    echo "  Installing ddcutil..."
     sudo apt update
     sudo apt install -y ddcutil
 fi
 
-# 设置 I2C 权限
+# Setup I2C permissions
 echo ""
-echo "[2/4] 设置 I2C 设备权限..."
+echo "[2/4] Setting up I2C device permissions..."
 if ! groups $USER | grep -q '\bi2c\b'; then
-    echo "  将用户 $USER 添加到 i2c 组..."
+    echo "  Adding user $USER to i2c group..."
     sudo usermod -aG i2c $USER
-    echo "  ⚠️  需要重新登录才能使权限生效"
+    echo "  ⚠️  Please log out and log back in for permissions to take effect"
 fi
 
-# 安装 udev 规则（允许普通用户访问 I2C）
+# Install udev rules (allow regular users to access I2C)
 if [ ! -f "/etc/udev/rules.d/45-ddcutil-i2c.rules" ]; then
-    echo "  安装 udev 规则..."
+    echo "  Installing udev rules..."
     cat << 'EOF' | sudo tee /etc/udev/rules.d/45-ddcutil-i2c.rules > /dev/null
 # Grant access to I2C devices for ddcutil
 KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"
@@ -45,34 +45,34 @@ EOF
     sudo udevadm trigger
 fi
 
-# 安装插件
+# Install plugin
 echo ""
-echo "[3/4] 安装插件..."
+echo "[3/4] Installing plugin..."
 sudo cp "$SOURCE_DIR/build/src/$PLUGIN_NAME" "$PLUGIN_DIR/"
 sudo chmod 644 "$PLUGIN_DIR/$PLUGIN_NAME"
-echo "  已安装到: $PLUGIN_DIR/$PLUGIN_NAME"
+echo "  Installed to: $PLUGIN_DIR/$PLUGIN_NAME"
 
-# 重启 WingPanel
+# Restart WingPanel
 echo ""
-echo "[4/4] 重启 WingPanel..."
+echo "[4/4] Restarting WingPanel..."
 killall wingpanel 2>/dev/null || true
 sleep 1
 
-# 检查 WingPanel 是否自动重启
+# Check if WingPanel auto-restarted
 if ! pgrep -x "wingpanel" > /dev/null; then
-    echo "  正在启动 WingPanel..."
+    echo "  Starting WingPanel..."
     wingpanel &
 fi
 
 echo ""
-echo "=== 安装完成 ==="
+echo "=== Installation Complete ==="
 echo ""
-echo "如果未看到亮度图标，请检查:"
-echo "1. 显示器是否支持 DDC/CI 并已启用"
-echo "2. 运行 'ddcutil detect' 是否能检测到显示器"
-echo "3. 重新登录以使 I2C 权限生效"
+echo "If the brightness icon is not visible, please check:"
+echo "1. Whether your display supports DDC/CI and has it enabled"
+echo "2. Run 'ddcutil detect' to see if displays are detected"
+echo "3. Log out and log back in for I2C permissions to take effect"
 echo ""
-echo "手动测试命令:"
-echo "  ddcutil detect          # 检测显示器"
-echo "  ddcutil getvcp 10       # 获取当前亮度"
-echo "  ddcutil setvcp 10 50    # 设置亮度为 50%"
+echo "Manual test commands:"
+echo "  ddcutil detect          # Detect displays"
+echo "  ddcutil getvcp 10       # Get current brightness"
+echo "  ddcutil setvcp 10 50    # Set brightness to 50%"
