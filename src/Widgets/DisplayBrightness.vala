@@ -6,6 +6,7 @@ public class DDCBrightness.Widgets.DisplayBrightness : Gtk.Box {
     private bool updating = false;
     private uint debounce_timeout_id = 0;
     private int pending_brightness = -1;
+    private bool is_dragging = false;
 
     public DisplayBrightness (Services.DDCService service, Services.Display disp) {
         Object (
@@ -66,25 +67,49 @@ public class DDCBrightness.Widgets.DisplayBrightness : Gtk.Box {
         pack_start (header_box, false, false, 0);
         pack_start (scale_box, false, true, 0);
 
-        // 滑块拖动时只更新 UI，不执行命令
+        // 检测鼠标按下/释放，优化拖动体验
+        brightness_scale.add_events (Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK);
+
+        brightness_scale.button_press_event.connect ((event) => {
+            is_dragging = true;
+            return false;
+        });
+
+        brightness_scale.button_release_event.connect ((event) => {
+            is_dragging = false;
+            // 释放时立即执行
+            if (pending_brightness >= 0) {
+                if (debounce_timeout_id > 0) {
+                    Source.remove (debounce_timeout_id);
+                    debounce_timeout_id = 0;
+                }
+                execute_brightness_change (pending_brightness);
+                pending_brightness = -1;
+            }
+            return false;
+        });
+
+        // 滑块值改变时更新 UI
         brightness_scale.value_changed.connect (() => {
             if (!updating) {
                 int new_value = (int) brightness_scale.get_value ();
                 value_label.label = "%d%%".printf (new_value);
                 pending_brightness = new_value;
 
-                // 防抖：300ms 后执行实际命令
-                if (debounce_timeout_id > 0) {
-                    Source.remove (debounce_timeout_id);
-                }
-                debounce_timeout_id = Timeout.add (300, () => {
-                    if (pending_brightness >= 0) {
-                        ddc_service.set_brightness.begin (display, pending_brightness);
-                        pending_brightness = -1;
+                // 只在非拖动状态下使用短延迟
+                if (!is_dragging) {
+                    if (debounce_timeout_id > 0) {
+                        Source.remove (debounce_timeout_id);
                     }
-                    debounce_timeout_id = 0;
-                    return false;
-                });
+                    debounce_timeout_id = Timeout.add (100, () => {
+                        if (pending_brightness >= 0) {
+                            execute_brightness_change (pending_brightness);
+                            pending_brightness = -1;
+                        }
+                        debounce_timeout_id = 0;
+                        return false;
+                    });
+                }
             }
         });
 
@@ -93,6 +118,13 @@ public class DDCBrightness.Widgets.DisplayBrightness : Gtk.Box {
             if (changed_display.display_number == display.display_number) {
                 update_scale_value (changed_display.brightness);
             }
+        });
+    }
+
+    private void execute_brightness_change (int value) {
+        // 在后台线程执行，避免阻塞 UI
+        new Thread<void> ("brightness-set", () => {
+            ddc_service.set_brightness.begin (display, value);
         });
     }
 
