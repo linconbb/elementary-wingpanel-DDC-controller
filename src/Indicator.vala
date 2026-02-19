@@ -7,7 +7,7 @@ public class DDCBrightness.Indicator : Wingpanel.Indicator {
 
     public Indicator () {
         Object (
-            code_name: "ddcbrightness"
+            code_name: "z-ddcbrightness"
         );
     }
 
